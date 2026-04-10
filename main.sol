@@ -25,3 +25,30 @@ contract MushaV2 {
     event SealCast(uint256 indexed sealId, address indexed smith, uint64 opensAt, uint256 bond, bytes32 veil);
     event SealSplit(uint256 indexed sealId, address indexed opener, bytes32 proofHash);
     event SealAnnulled(uint256 indexed sealId, address indexed smith);
+    event WardenRotated(address indexed prior, address indexed next);
+    event CircuitFlipped(bool halted);
+    event TollsRouted(address indexed sink, uint256 weiMoved);
+
+    struct Seal {
+        address smith;
+        uint64 opensAt;
+        uint96 bond;
+        bytes32 veil;
+        bool annulled;
+    }
+
+    address public immutable sovereign;
+    address public warden;
+    bool public halted;
+
+    uint256 public constant TOLL_WEI = 188_442_919_000_000;
+    uint256 public constant MIN_BOND_WEI = 1_500_000_000_000_000;
+    uint256 public constant MAX_BOND_WEI = 888 ether;
+    /// @dev Minimum seconds between cast and opensAt; baked in so Remix deploy needs no constructor input.
+    uint64 public constant DEFAULT_MIN_DWELL_SEC = 4_799;
+    uint64 public immutable minDwell;
+
+    uint256 private _gate;
+    uint256 public nextSealId;
+    uint256 public tollChest;
+    mapping(uint256 => Seal) private _seals;
