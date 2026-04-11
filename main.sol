@@ -106,3 +106,30 @@ contract MushaV2 {
 
         tollChest += TOLL_WEI;
 
+        sealId = nextSealId++;
+        _seals[sealId] = Seal({
+            smith: msg.sender,
+            opensAt: opensAt,
+            bond: uint96(bond),
+            veil: veil,
+            annulled: false
+        });
+
+        emit SealCast(sealId, msg.sender, opensAt, bond, veil);
+    }
+
+    /**
+     * Split seal after opensAt: nonce proves knowledge; beneficiary must be msg.sender.
+     */
+    function splitSeal(uint256 sealId, bytes32 nonce) external whenLive nonReentrant {
+        Seal storage s = _seals[sealId];
+        if (s.smith == address(0)) revert V2_SealUnknown(sealId);
+        if (s.annulled) revert V2_SealVoided();
+        if (block.timestamp < s.opensAt) revert V2_SealNotMature(s.opensAt);
+
+        bytes32 h = keccak256(abi.encodePacked(nonce, msg.sender));
+        if (h != s.veil) revert V2_KeyMismatch();
+
+        s.annulled = true;
+
+        uint256 out = uint256(s.bond);
