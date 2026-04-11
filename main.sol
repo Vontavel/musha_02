@@ -160,3 +160,29 @@ contract MushaV2 {
         if (next == address(0)) revert V2_WardenZero();
         address prior = warden;
         warden = next;
+        emit WardenRotated(prior, next);
+    }
+
+    function flipCircuit(bool on) external onlyWardenOrSovereign {
+        halted = on;
+        emit CircuitFlipped(on);
+    }
+
+    function routeTolls(address sink, uint256 amount) external onlySovereign nonReentrant {
+        if (sink == address(0)) revert V2_AccessDenied();
+        if (amount > tollChest) amount = tollChest;
+        tollChest -= amount;
+        (bool ok, ) = sink.call{value: amount}("");
+        if (!ok) revert V2_PayoutReverted();
+        emit TollsRouted(sink, amount);
+    }
+
+    function readSeal(uint256 sealId)
+        external
+        view
+        returns (address smith, uint64 opensAt, uint96 bond, bytes32 veil, bool annulled)
+    {
+        Seal storage s = _seals[sealId];
+        return (s.smith, s.opensAt, s.bond, s.veil, s.annulled);
+    }
+}
