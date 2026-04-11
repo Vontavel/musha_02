@@ -79,3 +79,30 @@ contract MushaV2 {
         sovereign = msg.sender;
         warden = msg.sender;
         minDwell = DEFAULT_MIN_DWELL_SEC;
+        _gate = 1;
+        emit WardenRotated(address(0), msg.sender);
+    }
+
+    receive() external payable {
+        revert("MushaV2: no direct ETH");
+    }
+
+    fallback() external payable {
+        revert("MushaV2: bad call");
+    }
+
+    /**
+     * Cast a new seal. Returns sealId. veil = keccak256(abi.encodePacked(nonce, beneficiary)).
+     * opensAt must be >= block.timestamp + minDwell.
+     */
+    function castSeal(bytes32 veil, uint64 opensAt) external payable whenLive returns (uint256 sealId) {
+        if (veil == bytes32(0)) revert V2_CommitmentEmpty();
+        if (opensAt < block.timestamp + minDwell) revert V2_SealNotMature(uint64(block.timestamp + minDwell));
+
+        if (msg.value < TOLL_WEI + MIN_BOND_WEI) revert V2_TollShort(msg.value, TOLL_WEI + MIN_BOND_WEI);
+
+        uint256 bond = msg.value - TOLL_WEI;
+        if (bond < MIN_BOND_WEI || bond > MAX_BOND_WEI) revert V2_BondOutOfRange(bond);
+
+        tollChest += TOLL_WEI;
+
