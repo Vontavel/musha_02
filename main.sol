@@ -52,3 +52,30 @@ contract MushaV2 {
     uint256 public nextSealId;
     uint256 public tollChest;
     mapping(uint256 => Seal) private _seals;
+
+    modifier onlySovereign() {
+        if (msg.sender != sovereign) revert V2_AccessDenied();
+        _;
+    }
+
+    modifier onlyWardenOrSovereign() {
+        if (msg.sender != sovereign && msg.sender != warden) revert V2_AccessDenied();
+        _;
+    }
+
+    modifier whenLive() {
+        if (halted) revert V2_CircuitOpen();
+        _;
+    }
+
+    modifier nonReentrant() {
+        if (_gate == 2) revert V2_Reentrant();
+        _gate = 2;
+        _;
+        _gate = 1;
+    }
+
+    constructor() {
+        sovereign = msg.sender;
+        warden = msg.sender;
+        minDwell = DEFAULT_MIN_DWELL_SEC;
