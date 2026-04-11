@@ -133,3 +133,30 @@ contract MushaV2 {
         s.annulled = true;
 
         uint256 out = uint256(s.bond);
+        (bool ok, ) = msg.sender.call{value: out}("");
+        if (!ok) revert V2_PayoutReverted();
+
+        emit SealSplit(sealId, msg.sender, keccak256(abi.encodePacked(nonce)));
+    }
+
+    /** Smith may annul before maturity; toll is not refunded. */
+    function annulSeal(uint256 sealId) external whenLive nonReentrant {
+        Seal storage s = _seals[sealId];
+        if (s.smith != msg.sender) revert V2_AccessDenied();
+        if (s.smith == address(0)) revert V2_SealUnknown(sealId);
+        if (s.annulled) revert V2_SealVoided();
+        if (block.timestamp >= s.opensAt) revert V2_AnnulTooLate(s.opensAt);
+
+        s.annulled = true;
+
+        uint256 out = uint256(s.bond);
+        (bool ok, ) = msg.sender.call{value: out}("");
+        if (!ok) revert V2_PayoutReverted();
+
+        emit SealAnnulled(sealId, msg.sender);
+    }
+
+    function rotateWarden(address next) external onlySovereign {
+        if (next == address(0)) revert V2_WardenZero();
+        address prior = warden;
+        warden = next;
